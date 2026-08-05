@@ -121,7 +121,7 @@ definePlugin({
 - [x] `@ziji/core`: DI container (register/resolve, singleton/transient, token-based)
 - [x] `@ziji/core`: typed event bus (on/emit/once, priority HIGH/NORMAL/LOW, wildcard)
 - [x] `@ziji/core`: plugin manager — dependency graph + phát hiện circular dependency
-- [ ] `@ziji/core`: loader — quét folder, import động, cache module
+- [x] `@ziji/core`: loader — quét folder, import động, cache module
 - [ ] Unit test coverage > 90% cho core (core là chỗ không được phép có bug)
 - [ ] `@ziji/errors`: bộ error class chuẩn hoá + error handler mặc định
 - [ ] `@ziji/config`: load config từ .env/.ts/.json + validate bằng zod, báo lỗi rõ khi thiếu field
