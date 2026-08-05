@@ -46,7 +46,7 @@ export class PluginManager<EM extends EventMap = Record<string, unknown>> {
 	}
 
 	async dispose(): Promise<void> {
-		const order = [...this.plugins.keys()].reverse();
+		const order = this.resolveOrder().reverse();
 		for (const name of order) {
 			const plugin = this.getPlugin(name);
 			if (plugin.state === "disposed") {

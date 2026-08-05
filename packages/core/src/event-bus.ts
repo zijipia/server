@@ -44,7 +44,7 @@ function wildcardToRegExp(pattern: string): RegExp {
 export class SimpleEventBus<EM extends EventMap = Record<string, unknown>> implements EventBus<EM> {
 	private listeners = new Set<ListenerEntry<EM>>();
 
-	on<Event extends string>(
+	on<Event extends EventKey<EM>>(
 		event: Event,
 		listener: EventListener<EM, Event>,
 		priority: EventPriority = EventPriority.NORMAL,
@@ -58,7 +58,7 @@ export class SimpleEventBus<EM extends EventMap = Record<string, unknown>> imple
 		});
 	}
 
-	once<Event extends string>(
+	once<Event extends EventKey<EM>>(
 		event: Event,
 		listener: EventListener<EM, Event>,
 		priority: EventPriority = EventPriority.NORMAL,
@@ -72,7 +72,7 @@ export class SimpleEventBus<EM extends EventMap = Record<string, unknown>> imple
 		});
 	}
 
-	off<Event extends string>(event: Event, listener: EventListener<EM, Event>): void {
+	off<Event extends EventKey<EM>>(event: Event, listener: EventListener<EM, Event>): void {
 		for (const entry of [...this.listeners]) {
 			if (entry.event === event && entry.listener === listener) {
 				this.listeners.delete(entry);
@@ -98,7 +98,7 @@ export class SimpleEventBus<EM extends EventMap = Record<string, unknown>> imple
 		});
 	}
 
-	async emit<Event extends string>(event: Event, payload: EventPayload<EM, Event>): Promise<void> {
+	async emit<Event extends EventKey<EM>>(event: Event, payload: EventPayload<EM, Event>): Promise<void> {
 		const entries = [...this.listeners].filter((entry) => {
 			if (entry.wildcard) {
 				return wildcardToRegExp(entry.event).test(event);

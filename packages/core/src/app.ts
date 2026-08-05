@@ -10,13 +10,13 @@ export interface AppEvents {
 	"app:shutdown": void;
 }
 
-export interface AppOptions<EM extends EventMap = AppEvents> {
+export interface AppOptions<EM extends EventMap & AppEvents = AppEvents> {
 	eventBus?: EventBus<EM>;
 	container?: Container;
 	pluginManager?: PluginManager<EM>;
 }
 
-export class ZijiApp<EM extends EventMap = AppEvents> {
+export class ZijiApp<EM extends EventMap & AppEvents = AppEvents> {
 	readonly container: Container;
 	readonly events: EventBus<EM>;
 	readonly plugins: PluginManager<EM>;
@@ -39,17 +39,23 @@ export class ZijiApp<EM extends EventMap = AppEvents> {
 		}
 
 		this.state = "booting";
-		await this.events.emit("app:boot" as EventKey<EM>, undefined as any);
 
-		if (options?.loadConfig) {
-			await options.loadConfig();
+		try {
+			await this.events.emit("app:boot", undefined);
+
+			if (options?.loadConfig) {
+				await options.loadConfig();
+			}
+
+			await this.events.emit("app:config", undefined);
+			await this.plugins.bootstrap();
+
+			this.state = "ready";
+			await this.events.emit("app:ready", undefined);
+		} catch (error) {
+			this.state = "created";
+			throw error;
 		}
-
-		await this.events.emit("app:config" as EventKey<EM>, undefined as any);
-		await this.plugins.bootstrap();
-
-		this.state = "ready";
-		await this.events.emit("app:ready" as EventKey<EM>, undefined as any);
 	}
 
 	async shutdown(): Promise<void> {
@@ -58,8 +64,28 @@ export class ZijiApp<EM extends EventMap = AppEvents> {
 		}
 
 		this.state = "shuttingDown";
-		await this.events.emit("app:shutdown" as EventKey<EM>, undefined as any);
-		await this.plugins.dispose();
+
+		let shutdownError: unknown;
+
+		try {
+			await this.events.emit("app:shutdown", undefined);
+		} catch (error) {
+			shutdownError = error;
+		}
+
+		try {
+			await this.plugins.dispose();
+		} catch (disposeError) {
+			if (shutdownError) {
+				throw new AggregateError([shutdownError, disposeError], "Shutdown failed during events and dispose");
+			}
+			throw disposeError;
+		}
+
 		this.state = "disposed";
+
+		if (shutdownError) {
+			throw shutdownError;
+		}
 	}
 }
