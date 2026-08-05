@@ -26,15 +26,15 @@ Trước khi viết code, tự trả lời 3 câu hỏi:
 
 ## 4. Bản đồ package → trách nhiệm (đọc trước khi sửa file)
 
-| Package       | Được phép chứa                                             | Tuyệt đối không chứa                                  |
-| ------------- | ---------------------------------------------------------- | ----------------------------------------------------- |
-| `core`        | lifecycle, DI container, event bus, plugin manager, loader | HTTP, DB, WS, bất kỳ adapter nào                      |
-| `server`      | re-export tiện lợi, không có logic riêng                   | logic thật (nếu có logic thật, nó thuộc package khác) |
-| `plugin-http` | adapter Fastify/Express                                    | business logic của app người dùng                     |
-| `plugin-router` | file-based + decorator routing                             | validation logic phức tạp (nên gọi ra schema lib) |
-| `plugin-database` | adapter Prisma/Drizzle                                    | ORM tự viết |
-| `cli` | scaffold, dev/build/start command | logic runtime của server |
-| `testing` | mock app/context, test helper | code chỉ dùng nội bộ core (import ngược từ core là sai hướng) |
+| Package           | Được phép chứa                                             | Tuyệt đối không chứa                                          |
+| ----------------- | ---------------------------------------------------------- | ------------------------------------------------------------- |
+| `core`            | lifecycle, DI container, event bus, plugin manager, loader | HTTP, DB, WS, bất kỳ adapter nào                              |
+| `server`          | re-export tiện lợi, không có logic riêng                   | logic thật (nếu có logic thật, nó thuộc package khác)         |
+| `plugin-http`     | adapter Fastify/Express                                    | business logic của app người dùng                             |
+| `plugin-router`   | file-based + decorator routing                             | validation logic phức tạp (nên gọi ra schema lib)             |
+| `plugin-database` | adapter Prisma/Drizzle                                     | ORM tự viết                                                   |
+| `cli`             | scaffold, dev/build/start command                          | logic runtime của server                                      |
+| `testing`         | mock app/context, test helper                              | code chỉ dùng nội bộ core (import ngược từ core là sai hướng) |
 
 ## 4. Core hiện tại có thể làm gì
 
