@@ -1,5 +1,5 @@
 import { Container } from "./container";
-import { EventBus, EventKey, EventMap, SimpleEventBus } from "./event-bus";
+import { EventBus, EventKey, EventMap, EventPayload, SimpleEventBus } from "./event-bus";
 import { PluginManager } from "./plugin-manager";
 import type { PluginDescriptor } from "./plugin";
 
@@ -23,6 +23,10 @@ export class ZijiApp<EM extends EventMap & AppEvents = AppEvents> {
 
 	private state: "created" | "booting" | "ready" | "shuttingDown" | "disposed" = "created";
 
+	private async emitLifecycle(event: keyof AppEvents): Promise<void> {
+		return this.events.emit(event as unknown as EventKey<EM>, undefined as any);
+	}
+
 	constructor(options?: AppOptions<EM>) {
 		this.container = options?.container ?? new Container();
 		this.events = options?.eventBus ?? new SimpleEventBus<EM>();
@@ -41,17 +45,17 @@ export class ZijiApp<EM extends EventMap & AppEvents = AppEvents> {
 		this.state = "booting";
 
 		try {
-			await this.events.emit("app:boot", undefined);
+			await this.emitLifecycle("app:boot");
 
 			if (options?.loadConfig) {
 				await options.loadConfig();
 			}
 
-			await this.events.emit("app:config", undefined);
+			await this.emitLifecycle("app:config");
 			await this.plugins.bootstrap();
 
 			this.state = "ready";
-			await this.events.emit("app:ready", undefined);
+			await this.emitLifecycle("app:ready");
 		} catch (error) {
 			this.state = "created";
 			throw error;
@@ -68,7 +72,7 @@ export class ZijiApp<EM extends EventMap & AppEvents = AppEvents> {
 		let shutdownError: unknown;
 
 		try {
-			await this.events.emit("app:shutdown", undefined);
+			await this.emitLifecycle("app:shutdown");
 		} catch (error) {
 			shutdownError = error;
 		}
@@ -77,7 +81,9 @@ export class ZijiApp<EM extends EventMap & AppEvents = AppEvents> {
 			await this.plugins.dispose();
 		} catch (disposeError) {
 			if (shutdownError) {
-				throw new AggregateError([shutdownError, disposeError], "Shutdown failed during events and dispose");
+				throw new Error(
+					`Shutdown failed during events and dispose: ${disposeError instanceof Error ? disposeError.message : String(disposeError)}`,
+				);
 			}
 			throw disposeError;
 		}
