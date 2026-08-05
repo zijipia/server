@@ -36,6 +36,19 @@ Trước khi viết code, tự trả lời 3 câu hỏi:
 | `cli`             | scaffold, dev/build/start command                          | logic runtime của server                                      |
 | `testing`         | mock app/context, test helper                              | code chỉ dùng nội bộ core (import ngược từ core là sai hướng) |
 
+## 4. Core hiện tại có thể làm gì
+
+`@ziji/core` hiện cung cấp:
+
+- Lifecycle application sequence: `boot()`, `ready`, `shutdown()`
+- Typed DI container with token-based registrations, singleton/transient resolution
+- Typed event bus with `on`, `once`, `emit`, listener priority, and wildcard support
+- Plugin manager with dependency graph resolution and circular dependency detection
+
+| `plugin-router` | file-based + decorator routing | validation logic phức tạp (nên gọi ra schema lib) | | `plugin-database` |
+adapter Prisma/Drizzle | ORM tự viết | | `cli` | scaffold, dev/build/start command | logic runtime của server | | `testing` | mock
+app/context, test helper | code chỉ dùng nội bộ core (import ngược từ core là sai hướng) |
+
 ## 5. Định nghĩa "xong" (Definition of Done) cho mọi PR do AI tạo
 
 Một task chưa xong nếu thiếu bất kỳ điều nào:

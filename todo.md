@@ -1,15 +1,21 @@
-# @ziji — Thiết kế lại kiến trúc & Todo List
+# @ziji — Thiết kế kiến trúc & Todo List
 
 ## 1. Nguyên tắc thiết kế
 
-Trước khi vẽ lại cấu trúc, chốt vài nguyên tắc để mọi quyết định sau đó có chỗ dựa:
+Trước khi vẽ cấu trúc, chốt vài nguyên tắc để mọi quyết định sau đó có chỗ dựa:
 
-1. **Core siêu nhỏ, siêu ổn định.** Core chỉ làm 3 việc: lifecycle, DI container, event bus. Không import HTTP, không import DB. Core không bao giờ được phép "biết" plugin nào tồn tại.
-2. **Mọi thứ là plugin — kể cả HTTP.** Router, WebSocket, Database, Cache đều là plugin chính thức (`@ziji/plugin-*`), không phải code lõi. Điều này buộc bạn ăn "dogfood" chính API plugin của mình từ ngày đầu, nên API sẽ tốt hơn.
-3. **Convention over configuration, nhưng luôn có escape hatch.** Auto-load theo folder là mặc định, nhưng phải cho phép đăng ký thủ công (`server.register(...)`) vì auto-magic quá đà sẽ gây khó debug.
-4. **Type-safety là tính năng, không phải afterthought.** Event bus, DI container, context — tất cả phải generic hóa để TypeScript suy luận được, không chỉ là string key rời rạc.
-5. **Fail fast, fail loud.** Dependency thiếu, circular dependency, plugin lỗi khi `setup()` → phải throw ngay lúc boot với message rõ ràng, không âm thầm bỏ qua.
-6. **Zero-cost khi không dùng.** Nếu người dùng không cài `@ziji/plugin-websocket`, code đó không được có trong bundle/runtime của họ.
+1. **Core siêu nhỏ, siêu ổn định.** Core chỉ làm 3 việc: lifecycle, DI container, event bus. Không import HTTP, không import DB.
+   Core không bao giờ được phép "biết" plugin nào tồn tại.
+2. **Mọi thứ là plugin — kể cả HTTP.** Router, WebSocket, Database, Cache đều là plugin chính thức (`@ziji/plugin-*`), không phải
+   code lõi. Điều này buộc bạn ăn "dogfood" chính API plugin của mình từ ngày đầu, nên API sẽ tốt hơn.
+3. **Convention over configuration, nhưng luôn có escape hatch.** Auto-load theo folder là mặc định, nhưng phải cho phép đăng ký
+   thủ công (`server.register(...)`) vì auto-magic quá đà sẽ gây khó debug.
+4. **Type-safety là tính năng, không phải afterthought.** Event bus, DI container, context — tất cả phải generic hóa để TypeScript
+   suy luận được, không chỉ là string key rời rạc.
+5. **Fail fast, fail loud.** Dependency thiếu, circular dependency, plugin lỗi khi `setup()` → phải throw ngay lúc boot với
+   message rõ ràng, không âm thầm bỏ qua.
+6. **Zero-cost khi không dùng.** Nếu người dùng không cài `@ziji/plugin-websocket`, code đó không được có trong bundle/runtime của
+   họ.
 
 ---
 
@@ -61,8 +67,10 @@ ziji/
 
 ### Vì sao chia vậy?
 
-- **`core` tách khỏi `server`**: `server` chỉ là package tiện lợi cài 1 lần cho người mới, nhưng ai muốn tối ưu bundle có thể cài lẻ `@ziji/core` + đúng plugin cần.
-- **`plugin-database` không tự viết ORM**: viết ORM riêng là hố đen công sức, không ai dùng framework mới kèm ORM mới. Adapter hóa quanh Prisma/Drizzle sẽ được cộng đồng tin tưởng hơn nhiều.
+- **`core` tách khỏi `server`**: `server` chỉ là package tiện lợi cài 1 lần cho người mới, nhưng ai muốn tối ưu bundle có thể cài
+  lẻ `@ziji/core` + đúng plugin cần.
+- **`plugin-database` không tự viết ORM**: viết ORM riêng là hố đen công sức, không ai dùng framework mới kèm ORM mới. Adapter hóa
+  quanh Prisma/Drizzle sẽ được cộng đồng tin tưởng hơn nhiều.
 - **`testing` là package riêng ngay từ đầu**: framework không có test utilities tốt thì không ai dùng cho production.
 
 ---
@@ -100,6 +108,7 @@ definePlugin({
 ### Giai đoạn 0 — Nền tảng & quyết định
 
 - [ ] Chốt tên package cuối cùng, đăng ký npm scope `@ziji`
+- [x] Initialize pnpm workspace and create `packages/core` skeleton
 - [ ] Setup monorepo: pnpm workspaces + Turborepo (hoặc Nx)
 - [ ] Setup changesets để version độc lập từng package
 - [ ] Chốt API design cho: Event Bus, DI Container, Plugin lifecycle (viết RFC/markdown trước khi code)
@@ -108,14 +117,16 @@ definePlugin({
 
 ### Giai đoạn 1 — Core
 
-- [ ] `@ziji/core`: lifecycle boot sequence (BOOT → Config → Plugins → Ready → Shutdown)
-- [ ] `@ziji/core`: DI container (register/resolve, singleton/transient, token-based)
-- [ ] `@ziji/core`: typed event bus (on/emit/once, priority HIGH/NORMAL/LOW, wildcard)
-- [ ] `@ziji/core`: plugin manager — dependency graph + phát hiện circular dependency
+- [x] `@ziji/core`: lifecycle boot sequence (BOOT → Config → Plugins → Ready → Shutdown)
+- [x] `@ziji/core`: DI container (register/resolve, singleton/transient, token-based)
+- [x] `@ziji/core`: typed event bus (on/emit/once, priority HIGH/NORMAL/LOW, wildcard)
+- [x] `@ziji/core`: plugin manager — dependency graph + phát hiện circular dependency
 - [ ] `@ziji/core`: loader — quét folder, import động, cache module
 - [ ] Unit test coverage > 90% cho core (core là chỗ không được phép có bug)
 - [ ] `@ziji/errors`: bộ error class chuẩn hoá + error handler mặc định
 - [ ] `@ziji/config`: load config từ .env/.ts/.json + validate bằng zod, báo lỗi rõ khi thiếu field
+
+- [x] `@ziji/core`: initial package implemented with lifecycle, typed event bus, container, plugin manager, and unit tests
 
 ### Giai đoạn 2 — HTTP & Routing
 
@@ -175,4 +186,5 @@ definePlugin({
 
 ---
 
-_Tài liệu này nên được cập nhật liên tục khi có quyết định kiến trúc mới — coi nó là nguồn sự thật (source of truth) thay vì Notion/Discord rời rạc._
+_Tài liệu này nên được cập nhật liên tục khi có quyết định kiến trúc mới — coi nó là nguồn sự thật (source of truth) thay vì
+Notion/Discord rời rạc._
