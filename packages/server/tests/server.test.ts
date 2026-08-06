@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Server } from "../src";
+import { Server, pluginRouter } from "../src";
 import { definePlugin } from "@ziji/core";
 
 describe("@ziji/server", () => {
@@ -22,5 +22,12 @@ describe("@ziji/server", () => {
 
 		await server.boot();
 		expect(events).toEqual(["boot", "config", "setup", "ready-plugin", "ready"]);
+	});
+
+	it("re-exports the router plugin from the server entrypoint", () => {
+		const plugin = pluginRouter({ routesDir: "routes" });
+
+		expect(plugin.name).toBe("@ziji/plugin-router");
+		expect(typeof plugin.setup).toBe("function");
 	});
 });

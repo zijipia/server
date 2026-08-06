@@ -1,0 +1,19 @@
+{
+	"name": "@ziji/plugin-router",
+	"version": "0.0.0",
+	"private": true,
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"scripts": {
+		"build": "tsc -b",
+		"test": "vitest"
+	},
+	"dependencies": {
+		"@ziji/core": "workspace:*"
+	},
+	"devDependencies": {
+		"vitest": "^1.0.0",
+		"@types/node": "^18.0.0",
+		"typescript": "^5.0.0"
+	}
+}
