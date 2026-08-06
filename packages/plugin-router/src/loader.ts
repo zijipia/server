@@ -8,11 +8,14 @@ function isRouteExport(value: unknown): value is Function & { __route?: RouteMet
 	return typeof value === "function" && !!(value as { __route?: RouteMeta }).__route;
 }
 
-export async function loadRoutes(opts: LoadRoutesOptions) {
+export async function loadRoutes<Req = any, Res = any>(opts: LoadRoutesOptions<Req, Res>) {
 	const routesDir = path.resolve(opts.routesDir);
 	if (!fs.existsSync(routesDir)) return;
 
-	const loader = new Loader({ directory: routesDir, extensions: [".js", ".ts"] });
+	const dev = opts.dev ?? false;
+	const extensions = opts.extensions ?? (dev ? [".js", ".mjs", ".cjs", ".ts"] : [".js", ".mjs", ".cjs"]);
+
+	const loader = new Loader({ directory: routesDir, extensions });
 	try {
 		const loadedModules = await loader.load();
 		for (const { module } of loadedModules) {
@@ -22,10 +25,10 @@ export async function loadRoutes(opts: LoadRoutesOptions) {
 				if (isRouteExport(exp)) {
 					const meta = exp.__route as RouteMeta;
 					const method = meta.method;
-					let handler: Function = exp;
+					let handler: any = exp;
 					if (opts.middlewares && opts.middlewares.length) {
-						const runner = compose(opts.middlewares);
-						handler = (req: any, res: any) => runner(req, res, exp);
+						const runner = compose<any, any>(opts.middlewares);
+						handler = (req: any, res: any) => runner(req, res, exp as any);
 					}
 					opts.router[method](meta.path, handler);
 				}

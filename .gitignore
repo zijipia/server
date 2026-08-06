@@ -5,3 +5,7 @@ dist
 out
 .cursorignore
 pnpm-lock.yaml
+
+# TypeScript
+*.tsbuildinfo
+**/*.tsbuildinfo

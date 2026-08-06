@@ -1,16 +1,18 @@
-export interface RequestContext {
-	req: any;
-	res: any;
-	user?: { id: string; [key: string]: any };
+import type { IncomingMessage, ServerResponse } from "http";
+
+export interface RequestContext<Req = IncomingMessage, Res = ServerResponse> {
+	req: Req;
+	res: Res;
+	user?: { id: string; [key: string]: unknown };
 	// plugin-specific extensions (e.g., db) can be added via module augmentation
-	[key: string]: any;
+	[key: string]: unknown;
 }
 
-export type RouteWithCtx = (ctx: RequestContext) => any;
+export type RouteWithCtx<Req = IncomingMessage, Res = ServerResponse, Ret = unknown> = (ctx: RequestContext<Req, Res>) => Ret;
 
-export function adapt(handler: RouteWithCtx) {
-	return function (req: any, res: any) {
-		const ctx: RequestContext = { req, res };
+export function adapt<Req = IncomingMessage, Res = ServerResponse, Ret = unknown>(handler: RouteWithCtx<Req, Res, Ret>) {
+	return function (req: Req, res: Res) {
+		const ctx: RequestContext<Req, Res> = { req, res };
 		return handler(ctx);
 	};
 }

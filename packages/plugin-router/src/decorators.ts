@@ -2,9 +2,9 @@ import { RouteMeta } from "./types";
 
 export function createRouteDecorator(method: RouteMeta["method"]) {
 	return (path: string) => {
-		return (handler: Function) => {
+		return <T extends Function>(handler: T): T => {
 			(handler as any).__route = { method, path } as RouteMeta;
-			return handler as any;
+			return handler;
 		};
 	};
 }
