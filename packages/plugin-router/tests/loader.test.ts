@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { loadRoutes } from "../src/loader";
+import { pluginRouter } from "../src";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 
 describe("plugin-router loader", () => {
@@ -42,5 +43,39 @@ describe("plugin-router loader", () => {
 		expect(registered).toHaveLength(2);
 		expect(registered.find((r) => r.method === "get" && r.path === "/users")).toBeDefined();
 		expect(registered.find((r) => r.method === "post" && r.path === "/users")).toBeDefined();
+	});
+
+	it("loads only emitted javascript routes by default", async () => {
+		const jsFile = path.join(tmpDir, "users.js");
+		const tsFile = path.join(tmpDir, "admin.ts");
+		fs.writeFileSync(
+			jsFile,
+			"exports.getUsers = Object.assign(function (req, res) { res.end('ok') }, { __route: { method: 'get', path: '/users' } });",
+		);
+		fs.writeFileSync(
+			tsFile,
+			"exports.getAdmin = Object.assign(function (req, res) { res.end('ok') }, { __route: { method: 'get', path: '/admin' } });",
+		);
+
+		const registered: Array<{ method: string; path: string }> = [];
+		const fakeRouter = {
+			get(p: string) {
+				registered.push({ method: "get", path: p });
+			},
+			post() {},
+			put() {},
+			delete() {},
+			patch() {},
+			all() {},
+		};
+
+		await loadRoutes({ routesDir: tmpDir, router: fakeRouter as any });
+
+		expect(registered).toEqual([{ method: "get", path: "/users" }]);
+	});
+
+	it("surfaces detailed config errors from pluginRouter", async () => {
+		const plugin = pluginRouter({ routesDir: "" });
+		await expect(plugin.setup({} as any)).rejects.toThrow("[@ziji/plugin-router] invalid config");
 	});
 });
