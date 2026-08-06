@@ -38,8 +38,7 @@ ziji/
 │   ├── logger/                   @ziji/logger  (pino-based, transport, format)
 │   ├── errors/                   @ziji/errors  (error classes chuẩn hoá: NotFound, Unauthorized...)
 │   │
-│   ├── plugin-http/               @ziji/plugin-http     (adapter: Fastify mặc định, Express optional)
-│   ├── plugin-router/             @ziji/plugin-router   (file-based routing + decorator routing)
+│   ├── plugin-router/             @ziji/plugin-router   (Express file-based routing + decorator routing)
 │   ├── plugin-websocket/          @ziji/plugin-websocket (adapter: ws / Socket.IO)
 │   ├── plugin-scheduler/          @ziji/plugin-scheduler (cron jobs, distributed lock optional)
 │   ├── plugin-database/           @ziji/plugin-database  (adapter: Prisma/Drizzle/Mongoose — KHÔNG tự viết ORM)
@@ -130,7 +129,6 @@ definePlugin({
 
 ### Giai đoạn 2 — HTTP & Routing
 
-- [ ] `@ziji/plugin-http`: adapter Fastify (mặc định, vì performance + schema validation built-in)
 - [ ] `@ziji/plugin-router`: file-based routing (`routes/users.ts` → tự động register)
 - [ ] `@ziji/plugin-router`: decorator-based routing (`@Controller`, `@Get`, `@Post`) — optional, dùng `reflect-metadata`
 - [ ] Middleware system: global + route-level, thứ tự thực thi rõ ràng, hỗ trợ async
