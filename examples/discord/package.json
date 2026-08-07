@@ -1,0 +1,16 @@
+{
+	"name": "test-discord",
+	"version": "0.0.0",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"typecheck": "tsc -p tsconfig.json --noEmit"
+	},
+	"dependencies": {
+		"@ziji/server": "link:..\\..\\packages\\server"
+	},
+	"devDependencies": {
+		"@types/node": "^20.11.0"
+	}
+}

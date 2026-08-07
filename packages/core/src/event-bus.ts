@@ -12,7 +12,7 @@ export type EventListener<EM extends EventMap, Event extends string> = (payload:
 
 export type EventKey<EM extends EventMap> = Extract<keyof EM, string>;
 
-export interface EventBus<EM extends EventMap = Record<string, unknown>> {
+export interface EventBus<EM extends EventMap = EventMap> {
 	on<Event extends EventKey<EM>>(event: Event, listener: EventListener<EM, Event>, priority?: EventPriority): void;
 
 	once<Event extends EventKey<EM>>(event: Event, listener: EventListener<EM, Event>, priority?: EventPriority): void;
@@ -41,7 +41,7 @@ function wildcardToRegExp(pattern: string): RegExp {
 	return new RegExp(`^${escaped}$`);
 }
 
-export class SimpleEventBus<EM extends EventMap = Record<string, unknown>> implements EventBus<EM> {
+export class SimpleEventBus<EM extends EventMap = EventMap> implements EventBus<EM> {
 	private listeners = new Set<ListenerEntry<EM>>();
 
 	on<Event extends EventKey<EM>>(

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createToken, Container, SimpleEventBus } from "@ziji/core";
-import { pluginDiscord, discordClientToken, DiscordClient } from "../src";
+import { createToken, Container, SimpleEventBus, type PluginDescriptor } from "@ziji/core";
+import { pluginDiscord, discordClientToken, DiscordClient, type DiscordEvents } from "../src";
 
 describe("@ziji/plugin-discord", () => {
 	it("registers a discord client and exposes it through the container", async () => {
@@ -33,5 +33,11 @@ describe("@ziji/plugin-discord", () => {
 		const plugin = pluginDiscord({ token: "test-token", intents: ["Guilds"] });
 		expect(plugin.name).toBe("@ziji/plugin-discord");
 		expect(typeof plugin.setup).toBe("function");
+	});
+
+	it("is assignable to a DiscordEvents plugin descriptor", () => {
+		const plugin = pluginDiscord({ token: "test-token", intents: ["Guilds"] });
+		const descriptor: PluginDescriptor<DiscordEvents> = plugin;
+		expect(descriptor.name).toBe("@ziji/plugin-discord");
 	});
 });

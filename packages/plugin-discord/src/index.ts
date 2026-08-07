@@ -1,8 +1,8 @@
-import { createToken, definePlugin, type PluginContext, type EventMap, type Token } from "@ziji/core";
+import { createToken, definePlugin, type PluginContext, type Token, AppEvents } from "@ziji/core";
 
 export type DiscordIntent = "Guilds" | "GuildMessages" | "GuildMembers" | "MessageContent";
 
-export interface DiscordEvents {
+export interface DiscordEvents extends AppEvents {
 	"discord:ready": void;
 }
 
@@ -43,9 +43,7 @@ export interface DiscordPluginOptions extends DiscordClientOptions {
 
 export const discordClientToken = createToken<DiscordClient>("discord.client");
 
-type DiscordPluginEventMap<EM extends EventMap = Record<string, unknown>> = EM & DiscordEvents;
-
-export function pluginDiscord<EM extends EventMap = Record<string, unknown>>(options: DiscordPluginOptions) {
+export function pluginDiscord(options: DiscordPluginOptions) {
 	const clientToken = options.clientToken ?? discordClientToken;
 	const client = new DiscordClient({
 		token: options.token,
@@ -53,17 +51,17 @@ export function pluginDiscord<EM extends EventMap = Record<string, unknown>>(opt
 		name: options.name,
 	});
 
-	return definePlugin<DiscordPluginEventMap<EM>>({
+	return definePlugin<DiscordEvents>({
 		name: "@ziji/plugin-discord",
-		async setup(context: PluginContext<DiscordPluginEventMap<EM>>) {
+		async setup(context: PluginContext<DiscordEvents>) {
 			context.container.register(clientToken, { useValue: client }, "singleton");
 		},
-		async ready(context: PluginContext<DiscordPluginEventMap<EM>>) {
+		async ready(context: PluginContext<DiscordEvents>) {
 			const resolved = context.container.resolve(clientToken);
 			await resolved.connect();
-			await context.events.emit<"discord:ready">("discord:ready", undefined);
+			await context.events.emit("discord:ready");
 		},
-		async dispose(context: PluginContext<DiscordPluginEventMap<EM>>) {
+		async dispose(context: PluginContext<DiscordEvents>) {
 			const resolved = context.container.resolve(clientToken);
 			await resolved.disconnect();
 		},
