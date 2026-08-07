@@ -13,11 +13,11 @@ export type EventListener<EM extends EventMap, Event extends string> = (payload:
 export type EventKey<EM extends EventMap> = Extract<keyof EM, string>;
 
 export interface EventBus<EM extends EventMap = Record<string, unknown>> {
-	on<Event extends EventKey<EM>>(event: Event, listener?: EventListener<EM, Event>, priority?: EventPriority): void;
+	on<Event extends EventKey<EM>>(event: Event, listener: EventListener<EM, Event>, priority?: EventPriority): void;
 
-	once<Event extends EventKey<EM>>(event: Event, listener?: EventListener<EM, Event>, priority?: EventPriority): void;
+	once<Event extends EventKey<EM>>(event: Event, listener: EventListener<EM, Event>, priority?: EventPriority): void;
 
-	off<Event extends EventKey<EM>>(event: Event, listener?: EventListener<EM, Event>): void;
+	off<Event extends EventKey<EM>>(event: Event, listener: EventListener<EM, Event>): void;
 
 	emit<Event extends EventKey<EM>>(event: Event, payload?: EventPayload<EM, Event>): Promise<void>;
 
