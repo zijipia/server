@@ -1,22 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { createToken, definePlugin, Container, SimpleEventBus } from "@ziji/core";
+import { createToken, Container, SimpleEventBus } from "@ziji/core";
 import { pluginDiscord, discordClientToken, DiscordClient } from "../src";
 
 describe("@ziji/plugin-discord", () => {
 	it("registers a discord client and exposes it through the container", async () => {
 		const container = new Container();
 		const events = new SimpleEventBus();
-		const client = new DiscordClient({ token: "test-token", intents: ["Guilds"] });
-		const token = createToken<DiscordClient>("discord.client");
-
-		container.register(token, { useValue: client });
 
 		const plugin = pluginDiscord({ token: "test-token", intents: ["Guilds"] });
 		await plugin.setup?.({ container, events });
 
-		const resolved = container.resolve(token);
+		const resolved = container.resolve(discordClientToken);
 		expect(resolved).toBeInstanceOf(DiscordClient);
 		expect(resolved.token).toBe("test-token");
+		expect(resolved.intents).toEqual(["Guilds"]);
+	});
+
+	it("uses a custom client token when provided", async () => {
+		const container = new Container();
+		const events = new SimpleEventBus();
+		const customToken = createToken<DiscordClient>("discord.custom");
+
+		const plugin = pluginDiscord({ token: "custom-token", intents: ["Guilds"], clientToken: customToken });
+		await plugin.setup?.({ container, events });
+
+		const resolved = container.resolve(customToken);
+		expect(resolved).toBeInstanceOf(DiscordClient);
+		expect(resolved.token).toBe("custom-token");
 	});
 
 	it("can be used as a plugin descriptor", async () => {
