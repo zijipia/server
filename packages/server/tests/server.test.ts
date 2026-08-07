@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Server, pluginRouter } from "../src";
+import { Server, pluginRouter, pluginDiscord } from "../src";
 import { definePlugin } from "@ziji/core";
 
 describe("@ziji/server", () => {
@@ -28,6 +28,13 @@ describe("@ziji/server", () => {
 		const plugin = pluginRouter({ routesDir: "routes" });
 
 		expect(plugin.name).toBe("@ziji/plugin-router");
+		expect(typeof plugin.setup).toBe("function");
+	});
+
+	it("re-exports the discord plugin from the server entrypoint", () => {
+		const plugin = pluginDiscord({ token: "test-token", intents: ["Guilds"] });
+
+		expect(plugin.name).toBe("@ziji/plugin-discord");
 		expect(typeof plugin.setup).toBe("function");
 	});
 });

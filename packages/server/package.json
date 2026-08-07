@@ -12,6 +12,7 @@
 	},
 	"dependencies": {
 		"@ziji/core": "workspace:*",
+		"@ziji/plugin-discord": "workspace:*",
 		"@ziji/plugin-router": "workspace:*"
 	},
 	"devDependencies": {
