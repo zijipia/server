@@ -8,7 +8,7 @@
 		"typecheck": "tsc -p tsconfig.json --noEmit"
 	},
 	"dependencies": {
-		"@ziji/server": "link:..\\..\\packages\\server"
+		"@ziji/server": "link:../../packages/server"
 	},
 	"devDependencies": {
 		"@types/node": "^20.11.0"

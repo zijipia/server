@@ -12,7 +12,7 @@ export type EventListener<EM extends EventMap, Event extends string> = (payload:
 
 export type EventKey<EM extends EventMap> = Extract<keyof EM, string>;
 
-export interface EventBus<EM extends EventMap = EventMap> {
+export interface EventBus<EM extends EventMap = Record<string, unknown>> {
 	on<Event extends EventKey<EM>>(event: Event, listener: EventListener<EM, Event>, priority?: EventPriority): void;
 
 	once<Event extends EventKey<EM>>(event: Event, listener: EventListener<EM, Event>, priority?: EventPriority): void;
@@ -41,7 +41,7 @@ function wildcardToRegExp(pattern: string): RegExp {
 	return new RegExp(`^${escaped}$`);
 }
 
-export class SimpleEventBus<EM extends EventMap = EventMap> implements EventBus<EM> {
+export class SimpleEventBus<EM extends EventMap = Record<string, unknown>> implements EventBus<EM> {
 	private listeners = new Set<ListenerEntry<EM>>();
 
 	on<Event extends EventKey<EM>>(
@@ -98,7 +98,7 @@ export class SimpleEventBus<EM extends EventMap = EventMap> implements EventBus<
 		});
 	}
 
-	async emit<Event extends EventKey<EM>>(event: Event, payload: EventPayload<EM, Event>): Promise<void> {
+	async emit<Event extends EventKey<EM>>(event: Event, payload?: EventPayload<EM, Event>): Promise<void> {
 		const entries = [...this.listeners].filter((entry) => {
 			if (entry.wildcard) {
 				return wildcardToRegExp(entry.event).test(event);
@@ -109,10 +109,10 @@ export class SimpleEventBus<EM extends EventMap = EventMap> implements EventBus<
 		entries.sort((left, right) => right.priority - left.priority);
 
 		for (const entry of [...entries]) {
-			await entry.listener(payload as EventPayload<EM, Event>);
 			if (entry.once) {
 				this.off(entry.event as Event, entry.listener as EventListener<EM, Event>);
 			}
+			await entry.listener(payload as EventPayload<EM, Event>);
 		}
 	}
 }

@@ -24,7 +24,7 @@ vi.mock("discord.js", () => {
 	};
 });
 
-import { pluginDiscord, discordClientToken, DiscordClient, type DiscordEvents } from "../src";
+import { pluginDiscord, discordClientToken, DiscordClient, type DiscordEvents, Message } from "../src";
 
 describe("@ziji/plugin-discord", () => {
 	beforeEach(() => {
@@ -81,7 +81,7 @@ describe("@ziji/plugin-discord", () => {
 			readyEmitted = true;
 		});
 
-		let messageReceived: any = null;
+		let messageReceived: Message | null = null;
 		events.on("discord:message", (msg) => {
 			messageReceived = msg;
 		});
@@ -110,6 +110,7 @@ describe("@ziji/plugin-discord", () => {
 
 		const plugin = pluginDiscord({ token: "test-token", intents: ["Guilds"] });
 		await plugin.setup?.({ container, events });
+		await plugin.ready?.({ container, events });
 		await plugin.dispose?.({ container, events });
 
 		expect(mockDestroy).toHaveBeenCalled();

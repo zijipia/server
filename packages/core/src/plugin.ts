@@ -1,12 +1,12 @@
 import type { Container } from "./container";
 import type { EventBus, EventMap } from "./event-bus";
 
-export interface PluginContext<EM extends EventMap = EventMap> {
+export interface PluginContext<EM extends EventMap = Record<string, unknown>> {
 	container: Container;
 	events: EventBus<EM>;
 }
 
-export interface PluginDescriptor<EM extends EventMap = EventMap> {
+export interface PluginDescriptor<EM extends EventMap = Record<string, unknown>> {
 	readonly name: string;
 	readonly dependencies?: string[];
 

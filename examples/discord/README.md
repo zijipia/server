@@ -5,5 +5,5 @@ This example shows how to register the Discord extension with the server boot se
 Run it with:
 
 ```bash
-DISCORD_TOKEN=your-token pnpm tsx examples/discord/index.ts
+DISCORD_TOKEN=your-token pnpm tsx examples/discord/src/index.ts
 ```

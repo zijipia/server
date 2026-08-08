@@ -39,7 +39,9 @@ export class DiscordClient {
 		const mappedIntents = this.intents.map((intent) => {
 			const bit = IntentMap[intent];
 			if (bit === undefined) {
-				throw new Error(`Invalid intent: ${intent}`);
+				throw new Error(
+					`[@ziji/plugin-discord] Invalid configuration for field "intents": intent "${intent}" is not a valid DiscordIntent.`,
+				);
 			}
 			return bit;
 		});
@@ -93,15 +95,21 @@ export function pluginDiscord(options: DiscordPluginOptions) {
 			const resolved = context.container.resolve(clientToken);
 
 			resolved.client.once("ready", () => {
-				context.events.emit("discord:ready");
+				context.events.emit("discord:ready").catch((err) => {
+					console.error(`[@ziji/plugin-discord] Error in discord:ready listener:`, err);
+				});
 			});
 
 			resolved.client.on("messageCreate", (message) => {
-				context.events.emit("discord:message", message);
+				context.events.emit("discord:message", message).catch((err) => {
+					console.error(`[@ziji/plugin-discord] Error in discord:message listener:`, err);
+				});
 			});
 
 			resolved.client.on("interactionCreate", (interaction) => {
-				context.events.emit("discord:interaction", interaction);
+				context.events.emit("discord:interaction", interaction).catch((err) => {
+					console.error(`[@ziji/plugin-discord] Error in discord:interaction listener:`, err);
+				});
 			});
 
 			await resolved.connect();

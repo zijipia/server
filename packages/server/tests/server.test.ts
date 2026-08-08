@@ -22,6 +22,7 @@ describe("@ziji/server", () => {
 
 		await server.boot();
 		expect(events).toEqual(["boot", "config", "setup", "ready-plugin", "ready"]);
+		await server.shutdown();
 	});
 
 	it("re-exports the router plugin from the server entrypoint", () => {

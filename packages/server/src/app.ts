@@ -50,6 +50,7 @@ export class Server<EM extends AppEvents = AppEvents> {
 	}
 
 	private setupSignalHandlers(): void {
+		this.cleanupSignalHandlers();
 		const signals = ["SIGINT", "SIGTERM"];
 		for (const signal of signals) {
 			const listener = async () => {
