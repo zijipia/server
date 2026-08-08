@@ -1,5 +1,5 @@
 import { createToken, definePlugin, type PluginContext, type Token, AppEvents } from "@ziji/core";
-import { Client as DiscordJSClient, GatewayIntentBits, Message, Interaction } from "discord.js";
+import { Client as DiscordJSClient, GatewayIntentBits, Message, Interaction, Events, type ClientEvents } from "discord.js";
 
 export { Message, Interaction } from "discord.js";
 
@@ -12,11 +12,20 @@ const IntentMap: Record<DiscordIntent, number> = {
 	MessageContent: GatewayIntentBits.MessageContent,
 };
 
-export interface DiscordEvents extends AppEvents {
+export type DiscordEvents = AppEvents & {
 	"discord:ready": void;
 	"discord:message": Message;
 	"discord:interaction": Interaction;
-}
+	"discord:messageCreate": Message;
+	"discord:interactionCreate": Interaction;
+} & {
+	[K in Exclude<keyof ClientEvents, "ready" | "messageCreate" | "interactionCreate"> as `discord:${K}`]: ClientEvents[K] extends (
+		[]
+	) ?
+		void
+	: ClientEvents[K] extends [infer Single] ? Single
+	: ClientEvents[K];
+};
 
 export interface DiscordClientOptions {
 	token: string;
@@ -94,23 +103,47 @@ export function pluginDiscord(options: DiscordPluginOptions) {
 		async ready(context: PluginContext<DiscordEvents>) {
 			const resolved = context.container.resolve(clientToken);
 
-			resolved.client.once("ready", () => {
+			let readyEmitted = false;
+			const emitReady = () => {
+				if (readyEmitted) return;
+				readyEmitted = true;
 				context.events.emit("discord:ready").catch((err) => {
 					console.error(`[@ziji/plugin-discord] Error in discord:ready listener:`, err);
 				});
+			};
+
+			// Listen to 'ready' for legacy/test mock support
+			resolved.client.once("ready", () => {
+				emitReady();
 			});
 
-			resolved.client.on("messageCreate", (message) => {
-				context.events.emit("discord:message", message).catch((err) => {
-					console.error(`[@ziji/plugin-discord] Error in discord:message listener:`, err);
-				});
-			});
+			for (const eventName of Object.values(Events)) {
+				resolved.client.on(eventName as any, (...args: any[]) => {
+					const payload =
+						args.length === 0 ? undefined
+						: args.length === 1 ? args[0]
+						: args;
 
-			resolved.client.on("interactionCreate", (interaction) => {
-				context.events.emit("discord:interaction", interaction).catch((err) => {
-					console.error(`[@ziji/plugin-discord] Error in discord:interaction listener:`, err);
+					context.events.emit(`discord:${eventName}` as any, payload).catch((err) => {
+						console.error(`[@ziji/plugin-discord] Error in discord:${eventName} listener:`, err);
+					});
+
+					// Backwards compatibility mappings:
+					if (eventName === "clientReady") {
+						emitReady();
+					}
+					if (eventName === "messageCreate") {
+						context.events.emit("discord:message", args[0]).catch((err) => {
+							console.error(`[@ziji/plugin-discord] Error in discord:message listener:`, err);
+						});
+					}
+					if (eventName === "interactionCreate") {
+						context.events.emit("discord:interaction", args[0]).catch((err) => {
+							console.error(`[@ziji/plugin-discord] Error in discord:interaction listener:`, err);
+						});
+					}
 				});
-			});
+			}
 
 			await resolved.connect();
 		},
@@ -122,4 +155,3 @@ export function pluginDiscord(options: DiscordPluginOptions) {
 }
 
 export default pluginDiscord;
-

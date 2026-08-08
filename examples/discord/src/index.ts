@@ -44,7 +44,19 @@ server.app.events.on("discord:message", async (message) => {
 	}
 });
 
+// Example of new dynamically supported events
+server.app.events.on("discord:messageUpdate", async ([oldMessage, newMessage]) => {
+	console.log(`Message updated from "${oldMessage.content}" to "${newMessage.content}"`);
+});
+
+server.app.events.on("discord:messageDelete", async (message) => {
+	console.log(`Message deleted: "${message.content}"`);
+});
+
+server.app.events.on("discord:channelCreate", async (channel) => {
+	console.log(`Channel created: ${channel.name} (${channel.id})`);
+});
+
 (async () => {
 	await server.boot();
 })();
-

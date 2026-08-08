@@ -6,7 +6,8 @@ const mockDestroy = vi.fn();
 const mockOn = vi.fn();
 const mockOnce = vi.fn();
 
-vi.mock("discord.js", () => {
+vi.mock("discord.js", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("discord.js")>();
 	class MockClient {
 		login = mockLogin;
 		destroy = mockDestroy;
@@ -14,13 +15,8 @@ vi.mock("discord.js", () => {
 		once = mockOnce;
 	}
 	return {
+		...actual,
 		Client: MockClient,
-		GatewayIntentBits: {
-			Guilds: 1,
-			GuildMessages: 2,
-			GuildMembers: 4,
-			MessageContent: 8,
-		},
 	};
 });
 
@@ -126,5 +122,27 @@ describe("@ziji/plugin-discord", () => {
 
 		expect(mockLogin).not.toHaveBeenCalled();
 	});
-});
 
+	it("forwards arbitrary discord events dynamically", async () => {
+		const container = new Container();
+		const events = new SimpleEventBus<DiscordEvents>();
+
+		const plugin = pluginDiscord({ token: "test-token", intents: ["Guilds"] });
+		await plugin.setup?.({ container, events });
+
+		let channelCreated: any = null;
+		events.on("discord:channelCreate", (channel) => {
+			channelCreated = channel;
+		});
+
+		await plugin.ready?.({ container, events });
+
+		expect(mockOn).toHaveBeenCalledWith("channelCreate", expect.any(Function));
+
+		// Simulate channelCreate event from discord.js client
+		const channelCallback = mockOn.mock.calls.find((call) => call[0] === "channelCreate")?.[1];
+		const mockChannel = { name: "general" };
+		channelCallback?.(mockChannel);
+		expect(channelCreated).toBe(mockChannel);
+	});
+});
