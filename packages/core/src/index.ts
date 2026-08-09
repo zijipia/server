@@ -4,4 +4,6 @@ export * from "./event-bus";
 export * from "./plugin";
 export * from "./plugin-manager";
 export * from "./app";
+export * from "./app-singleton";
 export * from "./loader";
+export * from "./startup";

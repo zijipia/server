@@ -1,7 +1,6 @@
 {
 	"name": "@ziji/plugin-router",
 	"version": "0.0.0",
-	"private": true,
 	"type": "module",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
@@ -10,7 +9,7 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@ziji/core": "workspace:*"
+		"@ziji/core": "^0.0.0"
 	},
 	"devDependencies": {
 		"vitest": "^1.0.0",
