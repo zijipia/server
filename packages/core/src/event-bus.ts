@@ -19,7 +19,7 @@ export interface EventBus<EM extends EventMap = Record<string, unknown>> {
 
 	off<Event extends EventKey<EM>>(event: Event, listener: EventListener<EM, Event>): void;
 
-	emit<Event extends EventKey<EM>>(event: Event, payload: EventPayload<EM, Event>): Promise<void>;
+	emit<Event extends EventKey<EM>>(event: Event, payload?: EventPayload<EM, Event>): Promise<void>;
 
 	onWildcard(pattern: string, listener: EventListener<EM, string>, priority?: EventPriority): void;
 }
@@ -98,7 +98,7 @@ export class SimpleEventBus<EM extends EventMap = Record<string, unknown>> imple
 		});
 	}
 
-	async emit<Event extends EventKey<EM>>(event: Event, payload: EventPayload<EM, Event>): Promise<void> {
+	async emit<Event extends EventKey<EM>>(event: Event, payload?: EventPayload<EM, Event>): Promise<void> {
 		const entries = [...this.listeners].filter((entry) => {
 			if (entry.wildcard) {
 				return wildcardToRegExp(entry.event).test(event);
@@ -109,10 +109,10 @@ export class SimpleEventBus<EM extends EventMap = Record<string, unknown>> imple
 		entries.sort((left, right) => right.priority - left.priority);
 
 		for (const entry of [...entries]) {
-			await entry.listener(payload as EventPayload<EM, Event>);
 			if (entry.once) {
 				this.off(entry.event as Event, entry.listener as EventListener<EM, Event>);
 			}
+			await entry.listener(payload as EventPayload<EM, Event>);
 		}
 	}
 }

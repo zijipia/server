@@ -84,4 +84,45 @@ describe("SimpleEventBus", () => {
 
 		expect(events).toEqual(["1", "2"]);
 	});
+
+	it("removes once listeners even if they throw an error", async () => {
+		type Events = { ping: void };
+		const bus = new SimpleEventBus<Events>();
+		let calls = 0;
+
+		bus.once("ping", () => {
+			calls += 1;
+			throw new Error("test error");
+		});
+
+		await expect(bus.emit("ping", undefined)).rejects.toThrow("test error");
+		await expect(bus.emit("ping", undefined)).resolves.not.toThrow();
+
+		expect(calls).toBe(1);
+	});
+
+	it("supports emitting without payload when payload is optional", async () => {
+		type Events = {
+			ping: void;
+			optional?: string;
+		};
+		const bus = new SimpleEventBus<Events>();
+		let pingCalls = 0;
+		let optionalCalls = 0;
+
+		bus.on("ping", () => {
+			pingCalls += 1;
+		});
+
+		bus.on("optional", (val) => {
+			optionalCalls += 1;
+			expect(val).toBeUndefined();
+		});
+
+		await bus.emit("ping");
+		await bus.emit("optional");
+
+		expect(pingCalls).toBe(1);
+		expect(optionalCalls).toBe(1);
+	});
 });
