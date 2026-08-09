@@ -2,10 +2,13 @@ import { promises as fsPromises, watch, type FSWatcher } from "fs";
 import path from "path";
 import { pathToFileURL } from "url";
 
+export type LoadMode = "default" | "namespace";
+
 export interface LoaderOptions {
 	directory: string;
 	extensions?: string[];
 	dev?: boolean;
+	loadMode?: LoadMode;
 }
 
 export interface LoadedModule<T = unknown> {
@@ -24,6 +27,7 @@ export class Loader {
 	private readonly directory: string;
 	private readonly extensions: string[];
 	private readonly dev: boolean;
+	private readonly loadMode: LoadMode;
 	private readonly cache = new Map<string, ModuleCacheEntry>();
 	private watcher: FSWatcher | null = null;
 	private reloadCounter = 0;
@@ -32,6 +36,7 @@ export class Loader {
 		this.directory = path.isAbsolute(options.directory) ? options.directory : path.resolve(process.cwd(), options.directory);
 		this.extensions = options.extensions ?? DEFAULT_EXTENSIONS;
 		this.dev = options.dev ?? false;
+		this.loadMode = options.loadMode ?? "default";
 
 		if (this.dev) {
 			this.createWatcher();
@@ -114,6 +119,11 @@ export class Loader {
 	private async importModule(filePath: string, forceReload: boolean): Promise<unknown> {
 		const url = this.toFileUrl(filePath, forceReload);
 		const imported = await import(url);
+
+		if (this.loadMode === "namespace") {
+			return imported;
+		}
+
 		return imported.default ?? imported;
 	}
 

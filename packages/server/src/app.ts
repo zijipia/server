@@ -5,6 +5,8 @@ export interface ServerOptions<EM extends AppEvents = AppEvents> {
 	plugins?: PluginDescriptor<EM>[];
 	extensions?: PluginDescriptor<EM>[];
 	keepAlive?: boolean;
+	startupDirectory?: string;
+	dev?: boolean;
 }
 
 export class Server<EM extends AppEvents = AppEvents> {
@@ -33,7 +35,10 @@ export class Server<EM extends AppEvents = AppEvents> {
 	}
 
 	async boot(): Promise<void> {
-		await this.app.boot();
+		await this.app.boot({
+			startupDirectory: this.options?.startupDirectory,
+			dev: this.options?.dev,
+		});
 		this.setupSignalHandlers();
 		if (this.options?.keepAlive) {
 			this.keepAliveInterval = setInterval(() => {}, 1000);
