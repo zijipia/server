@@ -1,14 +1,13 @@
 {
-	"name": "test-discord",
+	"name": "@ziji/core",
 	"version": "0.0.0",
+	"type": "module",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"scripts": {
 		"build": "tsc -p tsconfig.json",
-		"typecheck": "tsc -p tsconfig.json --noEmit"
-	},
-	"dependencies": {
-		"@ziji/server": "link:../../packages/server"
+		"typecheck": "tsc -p tsconfig.json --noEmit",
+		"test": "pnpm build && node --test dist/**/*.test.js"
 	},
 	"devDependencies": {
 		"@types/node": "^20.11.0"

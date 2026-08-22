@@ -9,11 +9,12 @@
 		"declarationMap": true,
 		"sourceMap": true,
 		"outDir": "dist",
+		"rootDir": "src",
 		"composite": true,
 		"strict": true,
 		"esModuleInterop": true,
 		"skipLibCheck": true,
 		"resolveJsonModule": true
 	},
-	"include": ["packages/**/*"]
+	"include": ["src"]
 }
