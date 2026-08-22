@@ -1,5 +1,5 @@
 import test from "node:test";
-import assert from "node:assert";
+import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { EventEmitter } from "node:events";
@@ -8,6 +8,7 @@ import { Loader } from "./loader.js";
 const TEMP_DIR = path.resolve("./test-temp-dir");
 
 async function setupTempDir() {
+	await fs.rm(TEMP_DIR, { recursive: true, force: true });
 	await fs.mkdir(TEMP_DIR, { recursive: true });
 }
 
@@ -23,16 +24,16 @@ test.describe("Loader Lifecycle", () => {
 		const filePath = path.join(TEMP_DIR, "simple.js");
 		await fs.writeFile(filePath, "export default { val: 42 };");
 
-		const loader = new Loader({
-			extensions: [".js"],
-		});
+		const loader = new Loader({ extensions: [".js"] });
 
-		const result = await loader.load(filePath);
-		assert.strictEqual(result.loaded.length, 1);
-		assert.strictEqual(result.failed.length, 0);
-
-		const module = loader.get("simple");
-		assert.deepStrictEqual(module, { val: 42 });
+		try {
+			const result = await loader.load(filePath);
+			assert.equal(result.loaded.length, 1);
+			assert.equal(result.failed.length, 0);
+			assert.deepEqual(loader.get("simple"), { val: 42 });
+		} finally {
+			await loader.destroy();
+		}
 	});
 
 	test("should execute init lifecycle function", async () => {
@@ -41,20 +42,21 @@ test.describe("Loader Lifecycle", () => {
 			filePath,
 			`export default {
 				initialized: false,
-				init(ctx) {
+				init() {
 					this.initialized = true;
 				}
 			};`,
 		);
 
-		const loader = new Loader({
-			extensions: [".js"],
-			init: true,
-		});
+		const loader = new Loader({ extensions: [".js"], init: true });
 
-		await loader.load(filePath);
-		const module: any = loader.get("init-test");
-		assert.strictEqual(module.initialized, true);
+		try {
+			await loader.load(filePath);
+			const module = loader.get("init-test") as { initialized: boolean };
+			assert.equal(module.initialized, true);
+		} finally {
+			await loader.destroy();
+		}
 	});
 
 	test("should bind/unbind event listeners", async () => {
@@ -73,24 +75,25 @@ test.describe("Loader Lifecycle", () => {
 		const loader = new Loader({
 			extensions: [".js"],
 			events: emitter,
-			on: {
-				testEvent: "onEvent",
-			},
+			on: { testEvent: "onEvent" },
 		});
 
-		await loader.load(filePath);
-		emitter.emit("testEvent");
+		try {
+			await loader.load(filePath);
+			emitter.emit("testEvent");
 
-		const module: any = loader.get("events-test");
-		assert.strictEqual(module.triggered, 1);
+			const module = loader.get("events-test") as { triggered: number };
+			assert.equal(module.triggered, 1);
 
-		// Unload should unbind the event listener
-		await loader.unload("events-test");
-		emitter.emit("testEvent");
-		assert.strictEqual(module.triggered, 1);
+			await loader.unload("events-test");
+			emitter.emit("testEvent");
+			assert.equal(module.triggered, 1);
+		} finally {
+			await loader.destroy();
+		}
 	});
 
-	test("should abort signal on unload/reload", async () => {
+	test("should abort signal on unload", async () => {
 		const filePath = path.join(TEMP_DIR, "abort-test.js");
 		await fs.writeFile(
 			filePath,
@@ -104,24 +107,25 @@ test.describe("Loader Lifecycle", () => {
 			};`,
 		);
 
-		const loader = new Loader({
-			extensions: [".js"],
-			init: true,
-		});
+		const loader = new Loader({ extensions: [".js"], init: true });
 
-		await loader.load(filePath);
-		const module: any = loader.get("abort-test");
-		assert.strictEqual(module.aborted, false);
+		try {
+			await loader.load(filePath);
+			const module = loader.get("abort-test") as { aborted: boolean };
+			assert.equal(module.aborted, false);
 
-		await loader.unload("abort-test");
-		assert.strictEqual(module.aborted, true);
+			await loader.unload("abort-test");
+			assert.equal(module.aborted, true);
+		} finally {
+			await loader.destroy();
+		}
 	});
 
 	test("should watch directory and reload changes", async () => {
 		const dirPath = path.join(TEMP_DIR, "watch-dir");
-		await fs.mkdir(dirPath, { recursive: true });
-
 		const filePath = path.join(dirPath, "watch-file.js");
+
+		await fs.mkdir(dirPath, { recursive: true });
 		await fs.writeFile(filePath, "export default { version: 1 };");
 
 		const loader = new Loader({
@@ -130,24 +134,31 @@ test.describe("Loader Lifecycle", () => {
 			debounce: 50,
 		});
 
-		await loader.load(dirPath);
-		assert.deepStrictEqual(loader.get("watch-file"), { version: 1 });
+		try {
+			await loader.load(dirPath);
+			assert.deepEqual(loader.get("watch-file"), { version: 1 });
 
-		// Listen to the reload event
-		let reloaded = false;
-		loader.on("reload", () => {
-			reloaded = true;
-		});
+			const reloadPromise = new Promise<void>((resolve, reject) => {
+				const timeout = setTimeout(() => {
+					loader.off("reload", onReload);
+					reject(new Error("Timed out waiting for loader reload."));
+				}, 2_000);
 
-		// Modify file content
-		await fs.writeFile(filePath, "export default { version: 2 };");
+				const onReload = () => {
+					clearTimeout(timeout);
+					loader.off("reload", onReload);
+					resolve();
+				};
 
-		// Wait for debounce and watch reload to execute
-		await new Promise((resolve) => setTimeout(resolve, 200));
+				loader.once("reload", onReload);
+			});
 
-		assert.strictEqual(reloaded, true);
-		assert.deepStrictEqual(loader.get("watch-file"), { version: 2 });
+			await fs.writeFile(filePath, "export default { version: 2 };");
+			await reloadPromise;
 
-		await loader.destroy();
+			assert.deepEqual(loader.get("watch-file"), { version: 2 });
+		} finally {
+			await loader.destroy();
+		}
 	});
 });
