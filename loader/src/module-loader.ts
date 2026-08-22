@@ -1,13 +1,17 @@
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
-import { createDebug } from "./debug.js";
+import { createDebug, type LoaderDebug } from "./debug.js";
 import type { ExtensionDefinition } from "./types.js";
 
 const require = createRequire(import.meta.url);
 
 export class ModuleLoader {
-	private readonly debug = createDebug(undefined, "ModuleLoader");
+	private readonly debug: ReturnType<typeof createDebug>;
+
+	public constructor(debug?: LoaderDebug) {
+		this.debug = createDebug(debug, "ModuleLoader");
+	}
 
 	public async load(filePath: string, definition?: ExtensionDefinition<any>, reload = false): Promise<unknown> {
 		this.debug("load", { filePath, extension: definition?.extension, customLoader: Boolean(definition?.load), reload });
