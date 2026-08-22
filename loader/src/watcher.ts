@@ -26,19 +26,15 @@ export class LoaderWatcher {
 		const basePath = isDirectory ? absolute : path.dirname(absolute);
 		const watchedFile = isDirectory ? undefined : absolute;
 
-		const watcher = fs.watch(
-			absolute,
-			{ recursive: isDirectory && this.options.recursive },
-			(event, filename) => {
-				if (!filename) return;
+		const watcher = fs.watch(absolute, { recursive: isDirectory && this.options.recursive }, (event, filename) => {
+			if (!filename) return;
 
-				const filePath = path.resolve(basePath, filename.toString());
-				if (watchedFile && filePath !== watchedFile) return;
+			const filePath = path.resolve(basePath, filename.toString());
+			if (watchedFile && filePath !== watchedFile) return;
 
-				if (this.options.ignore?.(filePath, false)) return;
-				this.schedule(filePath, event, callback);
-			},
-		);
+			if (this.options.ignore?.(filePath, false)) return;
+			this.schedule(filePath, event, callback);
+		});
 
 		watcher.on("error", () => this.unwatch(absolute));
 		this.watchers.set(absolute, watcher);

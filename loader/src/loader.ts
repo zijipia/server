@@ -18,7 +18,7 @@ import type {
 import type { WatchEvent } from "./watcher.js";
 
 const DEFAULT_EXTENSIONS = [".js", ".cjs", ".mjs"];
-	export interface Loader<T = unknown> {
+export interface Loader<T = unknown> {
 	on<K extends keyof LoaderEvents<T>>(event: K, listener: (...args: LoaderEvents<T>[K]) => void): this;
 	once<K extends keyof LoaderEvents<T>>(event: K, listener: (...args: LoaderEvents<T>[K]) => void): this;
 	off<K extends keyof LoaderEvents<T>>(event: K, listener: (...args: LoaderEvents<T>[K]) => void): this;
@@ -67,7 +67,7 @@ export class Loader<T = unknown> extends EventEmitter {
 				return result;
 			}
 
-			const loaded = await this.loadFile(absolute, absolute, options);
+			const loaded = await this.loadFile(path.dirname(absolute), absolute, options);
 			if (loaded && (options.watch ?? this.options.watch)) this.watch(absolute, options);
 			return { loaded: loaded ? [loaded] : [], failed: [] };
 		} catch (error) {
@@ -115,6 +115,7 @@ export class Loader<T = unknown> extends EventEmitter {
 	}
 
 	public async reload(name: string): Promise<LoadedModule<T>> {
+		console.log(`[Loader] reload called for name: ${name}`);
 		const old = this.modules.get(name);
 		if (!old) throw new Error(`Module "${name}" is not loaded.`);
 
@@ -222,9 +223,10 @@ export class Loader<T = unknown> extends EventEmitter {
 		if (!extension) return undefined;
 
 		const definition = this.definitions.get(extension.toLowerCase());
-		const module = await this.moduleLoader.load(filePath, definition, reload) as T;
+		const module = (await this.moduleLoader.load(filePath, definition, reload)) as T;
 		const relativePath = path.relative(root, filePath);
 		const name = this.resolveName(root, filePath, relativePath, module, options);
+		console.log(`[Loader] loadFile root: ${root}, filePath: ${filePath}, relativePath: ${relativePath}, resolvedName: ${name}`);
 		const controller = new AbortController();
 		const context: LoaderContext<T> = {
 			name,
@@ -242,14 +244,14 @@ export class Loader<T = unknown> extends EventEmitter {
 			}
 
 			const loaded: LoadedModule<T> = {
-			name,
-			path: filePath,
-			module,
-			context,
-			options: { ...options },
-			controller,
-			initialized: false,
-		};
+				name,
+				path: filePath,
+				module,
+				context,
+				options: { ...options },
+				controller,
+				initialized: false,
+			};
 
 			const init = options.init ?? definition?.init ?? this.options.init;
 			if (init) {
@@ -314,13 +316,24 @@ export class Loader<T = unknown> extends EventEmitter {
 	}
 
 	private async handleWatchChange(filePath: string, _event: WatchEvent): Promise<void> {
-		if (!this.isLoadable(filePath)) return;
+		console.log(`[Loader] handleWatchChange for: ${filePath}, event: ${_event}`);
+		if (!this.isLoadable(filePath)) {
+			console.log(`[Loader] File is not loadable: ${filePath}`);
+			return;
+		}
 
 		const existing = [...this.modules.values()].find((module) => path.resolve(module.path) === path.resolve(filePath));
-		const exists = await fs.access(filePath).then(() => true).catch(() => false);
+		const exists = await fs
+			.access(filePath)
+			.then(() => true)
+			.catch(() => false);
+		console.log(`[Loader] handleWatchChange existing: ${existing?.name}, exists: ${exists}`);
 
 		if (!exists) {
-			if (existing) await this.unload(existing.name);
+			if (existing) {
+				console.log(`[Loader] File deleted, unloading: ${existing.name}`);
+				await this.unload(existing.name);
+			}
 			return;
 		}
 
@@ -328,18 +341,30 @@ export class Loader<T = unknown> extends EventEmitter {
 			try {
 				await this.reload(existing.name);
 			} catch (error) {
+				console.error(`[Loader] reload failed:`, error);
 				this.emitError(toError(error), filePath);
 			}
 			return;
 		}
 
 		const root = this.findWatchRoot(filePath);
+		console.log(`[Loader] findWatchRoot returned root: ${root}`);
 		if (!root) return;
 
 		const options = this.watchRoots.get(root) ?? {};
 		try {
-			await this.loadFile(root, filePath, options);
+			let loadRoot = root;
+			try {
+				const stat = await fs.stat(root);
+				if (!stat.isDirectory()) {
+					loadRoot = path.dirname(root);
+				}
+			} catch {
+				loadRoot = path.dirname(root);
+			}
+			await this.loadFile(loadRoot, filePath, options);
 		} catch (error) {
+			console.error(`[Loader] loadFile on watch change failed:`, error);
 			this.emitError(toError(error), filePath);
 		}
 	}

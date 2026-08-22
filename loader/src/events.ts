@@ -51,9 +51,7 @@ export class EventManager<T = unknown> {
 			for (const handlerDefinition of handlers) {
 				const handler = this.resolveHandler(loaded.module, handlerDefinition);
 				if (!handler) {
-					throw new Error(
-						`Event handler "${String(handlerDefinition)}" was not found in module "${loaded.name}".`,
-					);
+					throw new Error(`Event handler "${String(handlerDefinition)}" was not found in module "${loaded.name}".`);
 				}
 
 				const bound = handler.bind(loaded.module);
@@ -72,6 +70,6 @@ export class EventManager<T = unknown> {
 		if (typeof definition === "function") return definition;
 
 		const value = (module as Record<string, unknown>)?.[definition];
-		return typeof value === "function" ? value as (...args: any[]) => unknown : undefined;
+		return typeof value === "function" ? (value as (...args: any[]) => unknown) : undefined;
 	}
 }

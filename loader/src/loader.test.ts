@@ -47,7 +47,9 @@ test.describe("Loader Lifecycle", () => {
 			assert.equal(result.loaded.length, 1);
 			assert.equal(result.failed.length, 0);
 			assert.deepEqual(loader.get("simple"), { val: 42 });
-		} finally { await loader.destroy(); }
+		} finally {
+			await loader.destroy();
+		}
 	});
 
 	test("should execute init lifecycle function", async () => {
@@ -57,7 +59,9 @@ test.describe("Loader Lifecycle", () => {
 		try {
 			await loader.load(filePath);
 			assert.equal((loader.get("init-test") as { initialized: boolean }).initialized, true);
-		} finally { await loader.destroy(); }
+		} finally {
+			await loader.destroy();
+		}
 	});
 
 	test("should bind and unbind event listeners", async () => {
@@ -73,7 +77,9 @@ test.describe("Loader Lifecycle", () => {
 			await loader.unload("events-test");
 			emitter.emit("testEvent");
 			assert.equal(module.triggered, 1);
-		} finally { await loader.destroy(); }
+		} finally {
+			await loader.destroy();
+		}
 	});
 
 	test("should bind once listeners", async () => {
@@ -87,24 +93,36 @@ test.describe("Loader Lifecycle", () => {
 			emitter.emit("testEvent");
 			emitter.emit("testEvent");
 			assert.equal(module.triggered, 1);
-		} finally { await loader.destroy(); }
+		} finally {
+			await loader.destroy();
+		}
 	});
 
 	test("should cleanup a partially bound event set", async () => {
 		const emitter = new EventEmitter();
 		const filePath = path.join(TEMP_DIR, "bad-events.js");
 		await fs.writeFile(filePath, `export default { onGood() {} };`);
-		const loader = new Loader({ extensions: [".js"], events: emitter, on: { good: "onGood", bad: "missingHandler" }, throwOnError: false });
+		const loader = new Loader({
+			extensions: [".js"],
+			events: emitter,
+			on: { good: "onGood", bad: "missingHandler" },
+			throwOnError: false,
+		});
 		try {
 			const result = await loader.load(filePath);
 			assert.equal(result.failed.length, 1);
 			assert.equal(emitter.listenerCount("good"), 0);
-		} finally { await loader.destroy(); }
+		} finally {
+			await loader.destroy();
+		}
 	});
 
 	test("should abort signal on unload", async () => {
 		const filePath = path.join(TEMP_DIR, "abort-test.js");
-		await fs.writeFile(filePath, `export default { aborted: false, init(ctx) { ctx.signal.addEventListener("abort", () => { this.aborted = true; }); } };`);
+		await fs.writeFile(
+			filePath,
+			`export default { aborted: false, init(ctx) { ctx.signal.addEventListener("abort", () => { this.aborted = true; }); } };`,
+		);
 		const loader = new Loader({ extensions: [".js"], init: true });
 		try {
 			await loader.load(filePath);
@@ -112,7 +130,9 @@ test.describe("Loader Lifecycle", () => {
 			assert.equal(module.aborted, false);
 			await loader.unload("abort-test");
 			assert.equal(module.aborted, true);
-		} finally { await loader.destroy(); }
+		} finally {
+			await loader.destroy();
+		}
 	});
 
 	test("should watch directory and reload changes", async () => {
@@ -128,7 +148,9 @@ test.describe("Loader Lifecycle", () => {
 			await fs.writeFile(filePath, "export default { version: 2 };");
 			await reloaded;
 			assert.deepEqual(loader.get("watch-file"), { version: 2 });
-		} finally { await loader.destroy(); }
+		} finally {
+			await loader.destroy();
+		}
 	});
 
 	test("should watch a single file", async () => {
@@ -141,7 +163,9 @@ test.describe("Loader Lifecycle", () => {
 			await fs.writeFile(filePath, "export default { version: 2 };");
 			await reloaded;
 			assert.deepEqual(loader.get("single-watch"), { version: 2 });
-		} finally { await loader.destroy(); }
+		} finally {
+			await loader.destroy();
+		}
 	});
 
 	test("should keep the old module when reload fails", async () => {
@@ -162,7 +186,9 @@ test.describe("Loader Lifecycle", () => {
 			await fs.writeFile(filePath, "export default { version: 2 };");
 			await reloaded;
 			assert.deepEqual(loader.get("atomic"), { version: 2 });
-		} finally { await loader.destroy(); }
+		} finally {
+			await loader.destroy();
+		}
 	});
 
 	test("should load new files with the watch root options", async () => {
@@ -175,6 +201,8 @@ test.describe("Loader Lifecycle", () => {
 			await fs.writeFile(filePath, `export default { initialized: false, init() { this.initialized = true; } };`);
 			await new Promise((resolve) => setTimeout(resolve, 150));
 			assert.equal((loader.get("new") as { initialized: boolean }).initialized, true);
-		} finally { await loader.destroy(); }
+		} finally {
+			await loader.destroy();
+		}
 	});
 });
