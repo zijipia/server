@@ -3,6 +3,7 @@ import path from "node:path";
 import { EventEmitter } from "node:events";
 
 import { defaultName, getMatchedExtension, normalizeExtensions, toError } from "./utils.js";
+import { createDebug } from "./debug.js";
 import { ModuleLoader } from "./module-loader.js";
 import { EventManager } from "./events.js";
 import { LoaderWatcher } from "./watcher.js";
@@ -28,12 +29,13 @@ export interface Loader<T = unknown> {
 export class Loader<T = unknown> extends EventEmitter {
 	private readonly modules = new Map<string, LoadedModule<T>>();
 	private readonly definitions = new Map<string, ExtensionDefinition<T>>();
-	private readonly moduleLoader = new ModuleLoader();
+	private readonly moduleLoader: ModuleLoader;
 	private readonly eventManager = new EventManager<T>();
 	private readonly watcher: LoaderWatcher;
 	private readonly watched = new Set<string>();
 	private readonly watchRoots = new Map<string, LoadOptions<T>>();
 	private readonly options: Required<Pick<LoaderOptions<T>, "recursive" | "throwOnError">> & LoaderOptions<T>;
+	private readonly debug: ReturnType<typeof createDebug>;
 
 	public constructor(options: LoaderOptions<T> = {}) {
 		super();
@@ -43,35 +45,49 @@ export class Loader<T = unknown> extends EventEmitter {
 			...options,
 			extensions: normalizeExtensions(options.extensions ?? DEFAULT_EXTENSIONS),
 		};
+		this.debug = createDebug(this.options.debug, "Loader");
+		this.moduleLoader = new ModuleLoader(this.options.debug);
 		this.watcher = new LoaderWatcher({
 			recursive: this.options.recursive,
 			debounce: options.debounce ?? 100,
 			ignore: options.ignore,
+		});
+		this.debug("created", {
+			recursive: this.options.recursive,
+			throwOnError: this.options.throwOnError,
+			extensions: this.options.extensions,
+			watch: this.options.watch ?? false,
 		});
 	}
 
 	public define(definition: ExtensionDefinition<T>): this {
 		const extension = definition.extension.startsWith(".") ? definition.extension : `.${definition.extension}`;
 		this.definitions.set(extension.toLowerCase(), { ...definition, extension });
+		this.debug("definition registered", { extension, customLoader: Boolean(definition.load) });
 		return this;
 	}
 
 	public async load(target: string, options: LoadOptions<T> = {}): Promise<LoadResult<T>> {
 		const absolute = path.resolve(target);
+		this.debug("load requested", { target, absolute, watch: options.watch ?? this.options.watch });
 
 		try {
 			const stat = await fs.stat(absolute);
 			if (stat.isDirectory()) {
+				this.debug("loading directory", { absolute });
 				const result = await this.loadDirectory(absolute, options);
 				if (options.watch ?? this.options.watch) this.watch(absolute, options);
+				this.debug("directory loaded", { absolute, loaded: result.loaded.length, failed: result.failed.length });
 				return result;
 			}
 
 			const loaded = await this.loadFile(path.dirname(absolute), absolute, options);
 			if (loaded && (options.watch ?? this.options.watch)) this.watch(absolute, options);
+			this.debug("file loaded", { absolute, name: loaded?.name });
 			return { loaded: loaded ? [loaded] : [], failed: [] };
 		} catch (error) {
 			const normalized = toError(error);
+			this.debug("load failed", { absolute, error: normalized });
 			this.emitError(normalized, absolute);
 			if (options.throwOnError ?? this.options.throwOnError) throw normalized;
 			return { loaded: [], failed: [{ path: absolute, error: normalized }] };
@@ -104,18 +120,23 @@ export class Loader<T = unknown> extends EventEmitter {
 
 	public async unload(name: string): Promise<boolean> {
 		const loaded = this.modules.get(name);
-		if (!loaded) return false;
+		if (!loaded) {
+			this.debug("unload skipped; module not found", { name });
+			return false;
+		}
 
+		this.debug("unloading", { name, path: loaded.path });
 		this.eventManager.unbind(loaded);
 		loaded.controller.abort();
 		this.modules.delete(name);
 		this.moduleLoader.invalidate(loaded.path);
 		this.emit("unload", loaded);
+		this.debug("unloaded", { name });
 		return true;
 	}
 
 	public async reload(name: string): Promise<LoadedModule<T>> {
-		console.log(`[Loader] reload called for name: ${name}`);
+		this.debug("reload requested", { name });
 		const old = this.modules.get(name);
 		if (!old) throw new Error(`Module "${name}" is not loaded.`);
 
@@ -140,8 +161,10 @@ export class Loader<T = unknown> extends EventEmitter {
 			this.moduleLoader.invalidate(old.path);
 
 			this.emit("reload", candidate);
+			this.debug("reloaded", { name, path: candidate.path });
 			return candidate;
 		} catch (error) {
+			this.debug("reload failed", { name, error });
 			if (candidate) {
 				this.eventManager.unbind(candidate);
 				candidate.controller.abort();
@@ -157,18 +180,22 @@ export class Loader<T = unknown> extends EventEmitter {
 		this.watched.delete(absolute);
 		this.watchRoots.delete(absolute);
 		this.emit("unwatch", absolute);
+		this.debug("unwatched", { target: absolute });
 		return true;
 	}
 
 	public async clear(): Promise<void> {
+		this.debug("clearing", { count: this.modules.size });
 		for (const name of this.keys()) await this.unload(name);
 	}
 
 	public async destroy(): Promise<void> {
+		this.debug("destroying", { modules: this.modules.size, watched: this.watched.size });
 		await this.clear();
 		this.watcher.close();
 		this.watched.clear();
 		this.watchRoots.clear();
+		this.debug("destroyed");
 	}
 
 	private async loadDirectory(root: string, options: LoadOptions<T>): Promise<LoadResult<T>> {
@@ -187,10 +214,14 @@ export class Loader<T = unknown> extends EventEmitter {
 	): Promise<void> {
 		const entries = await fs.readdir(directory, { withFileTypes: true });
 		entries.sort((a, b) => a.name.localeCompare(b.name));
+		this.debug("scanning directory", { root, directory, entries: entries.length });
 
 		for (const entry of entries) {
 			const filePath = path.join(directory, entry.name);
-			if (this.options.ignore?.(filePath, entry.isDirectory())) continue;
+			if (this.options.ignore?.(filePath, entry.isDirectory())) {
+				this.debug("ignored", { path: filePath, directory: entry.isDirectory() });
+				continue;
+			}
 
 			if (entry.isDirectory()) {
 				if (options.recursive ?? this.options.recursive) {
@@ -223,10 +254,11 @@ export class Loader<T = unknown> extends EventEmitter {
 		if (!extension) return undefined;
 
 		const definition = this.definitions.get(extension.toLowerCase());
+		this.debug("loading file", { root, filePath, extension, reload, register });
 		const module = (await this.moduleLoader.load(filePath, definition, reload)) as T;
 		const relativePath = path.relative(root, filePath);
 		const name = this.resolveName(root, filePath, relativePath, module, options);
-		console.log(`[Loader] loadFile root: ${root}, filePath: ${filePath}, relativePath: ${relativePath}, resolvedName: ${name}`);
+		this.debug("resolved module", { filePath, relativePath, name });
 		const controller = new AbortController();
 		const context: LoaderContext<T> = {
 			name,
@@ -239,8 +271,9 @@ export class Loader<T = unknown> extends EventEmitter {
 
 		try {
 			const check = options.check ?? definition?.check ?? this.options.check;
-			if (check && !(await check(module, context))) {
-				throw new Error(`Module "${name}" failed validation.`);
+			if (check) {
+				this.debug("checking module", { name });
+				if (!(await check(module, context))) throw new Error(`Module "${name}" failed validation.`);
 			}
 
 			const loaded: LoadedModule<T> = {
@@ -255,6 +288,7 @@ export class Loader<T = unknown> extends EventEmitter {
 
 			const init = options.init ?? definition?.init ?? this.options.init;
 			if (init) {
+				this.debug("initializing module", { name });
 				if (typeof init === "function") await init(module, context);
 				else if (typeof (module as any)?.init === "function") await (module as any).init(context);
 				loaded.initialized = true;
@@ -275,11 +309,13 @@ export class Loader<T = unknown> extends EventEmitter {
 					throw error;
 				}
 				this.emit("load", loaded);
+				this.debug("module registered", { name, path: filePath });
 			}
 
 			return loaded;
 		} catch (error) {
 			controller.abort();
+			this.debug("loadFile failed", { filePath, name, error });
 			throw error;
 		}
 	}
@@ -313,27 +349,22 @@ export class Loader<T = unknown> extends EventEmitter {
 			void this.handleWatchChange(filePath, event);
 		});
 		this.emit("watch", absolute);
+		this.debug("watching", { target: absolute });
 	}
 
-	private async handleWatchChange(filePath: string, _event: WatchEvent): Promise<void> {
-		console.log(`[Loader] handleWatchChange for: ${filePath}, event: ${_event}`);
-		if (!this.isLoadable(filePath)) {
-			console.log(`[Loader] File is not loadable: ${filePath}`);
-			return;
-		}
+	private async handleWatchChange(filePath: string, event: WatchEvent): Promise<void> {
+		this.debug("watch change", { filePath, event });
+		if (!this.isLoadable(filePath)) return;
 
 		const existing = [...this.modules.values()].find((module) => path.resolve(module.path) === path.resolve(filePath));
 		const exists = await fs
 			.access(filePath)
 			.then(() => true)
 			.catch(() => false);
-		console.log(`[Loader] handleWatchChange existing: ${existing?.name}, exists: ${exists}`);
+		this.debug("watch change state", { filePath, existing: existing?.name, exists });
 
 		if (!exists) {
-			if (existing) {
-				console.log(`[Loader] File deleted, unloading: ${existing.name}`);
-				await this.unload(existing.name);
-			}
+			if (existing) await this.unload(existing.name);
 			return;
 		}
 
@@ -341,14 +372,13 @@ export class Loader<T = unknown> extends EventEmitter {
 			try {
 				await this.reload(existing.name);
 			} catch (error) {
-				console.error(`[Loader] reload failed:`, error);
+				this.debug("watch reload failed", { filePath, name: existing.name, error });
 				this.emitError(toError(error), filePath);
 			}
 			return;
 		}
 
 		const root = this.findWatchRoot(filePath);
-		console.log(`[Loader] findWatchRoot returned root: ${root}`);
 		if (!root) return;
 
 		const options = this.watchRoots.get(root) ?? {};
@@ -356,15 +386,13 @@ export class Loader<T = unknown> extends EventEmitter {
 			let loadRoot = root;
 			try {
 				const stat = await fs.stat(root);
-				if (!stat.isDirectory()) {
-					loadRoot = path.dirname(root);
-				}
+				if (!stat.isDirectory()) loadRoot = path.dirname(root);
 			} catch {
 				loadRoot = path.dirname(root);
 			}
 			await this.loadFile(loadRoot, filePath, options);
 		} catch (error) {
-			console.error(`[Loader] loadFile on watch change failed:`, error);
+			this.debug("watch load failed", { filePath, error });
 			this.emitError(toError(error), filePath);
 		}
 	}
@@ -375,6 +403,7 @@ export class Loader<T = unknown> extends EventEmitter {
 	}
 
 	private emitError(error: Error, filePath: string): void {
+		this.debug("error", { filePath, error });
 		if (this.listenerCount("error") > 0) this.emit("error", error, filePath);
 	}
 }
