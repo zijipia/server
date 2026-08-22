@@ -1,5 +1,6 @@
 import type { EventEmitter } from "node:events";
 import type { Loader } from "./loader.js";
+import type { LoaderDebug } from "./debug.js";
 
 export type MaybePromise<T> = T | Promise<T>;
 export type ModuleNameResolver<T = unknown> = (filePath: string, context: NameResolverContext<T>) => string;
@@ -53,6 +54,7 @@ export interface LoaderOptions<T = unknown> extends WatchOptions {
 	check?: ModuleCheck<T>;
 	init?: boolean | ModuleInit<T>;
 	throwOnError?: boolean;
+	debug?: LoaderDebug;
 	events?: EventTarget;
 	on?: EventMapDefinition;
 	once?: EventMapDefinition;
