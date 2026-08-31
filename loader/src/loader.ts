@@ -216,20 +216,21 @@ export class Loader<T = unknown> extends EventEmitter {
 		entries.sort((a, b) => a.name.localeCompare(b.name));
 		this.debug("scanning directory", { root, directory, entries: entries.length });
 
-		for (const entry of entries) {
+		const tasks = entries.map(async (entry) => {
 			const filePath = path.join(directory, entry.name);
 			if (this.options.ignore?.(filePath, entry.isDirectory())) {
 				this.debug("ignored", { path: filePath, directory: entry.isDirectory() });
-				continue;
+				return;
 			}
 
 			if (entry.isDirectory()) {
 				if (options.recursive ?? this.options.recursive) {
 					await this.scanDirectory(root, filePath, options, loaded, failed);
 				}
-				continue;
+				return;
 			}
-			if (!this.isLoadable(filePath)) continue;
+
+			if (!this.isLoadable(filePath)) return;
 
 			try {
 				const result = await this.loadFile(root, filePath, options);
@@ -240,7 +241,9 @@ export class Loader<T = unknown> extends EventEmitter {
 				this.emitError(normalized, filePath);
 				if (options.throwOnError ?? this.options.throwOnError) throw normalized;
 			}
-		}
+		});
+
+		await Promise.all(tasks);
 	}
 
 	private async loadFile(
